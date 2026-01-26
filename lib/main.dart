@@ -1,42 +1,85 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+
+// --- SERVİSLER ---
+import 'services/notification_service.dart';
+
+// --- PROVIDER'LAR (BEYİNLER) ---
+import 'providers/pet_provider.dart';
+import 'providers/focus_provider.dart';
+import 'providers/settings_provider.dart';
+import 'providers/course_provider.dart'; // 👈 1. BU IMPORT EKSİKTİ
+
+// --- EKRANLAR ---
 import 'features/dashboard/dashboard_screen.dart';
-import 'features/onboarding/onboarding_screen.dart';
-import 'services/notification_service.dart'; // 👇 Servisi import ettik
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 👇 Bildirim servisini başlatıyoruz
   await NotificationService().init();
 
-  final prefs = await SharedPreferences.getInstance();
-  final bool seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
-
   runApp(
-    FocusPetApp(
-      startScreen: seenOnboarding
-          ? const DashboardScreen()
-          : const OnboardingScreen(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => PetProvider()),
+        ChangeNotifierProvider(create: (_) => FocusProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+
+        // 👇 2. BURASI EKSİKTİ: CourseProvider'ı sisteme tanıtıyoruz
+        // Eğer loadCourses fonksiyonun varsa açılışta verileri çekmesi için ..loadCourses() ekleyebilirsin
+        ChangeNotifierProvider(create: (_) => CourseProvider()..loadCourses()),
+      ],
+      child: const MyApp(),
     ),
   );
 }
 
-class FocusPetApp extends StatelessWidget {
-  final Widget startScreen;
-
-  const FocusPetApp({super.key, required this.startScreen});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+
     return MaterialApp(
-      title: 'FocusPet',
       debugShowCheckedModeBanner: false,
+      title: 'Focus Pet',
+      themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+
+      // Light Theme
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          iconTheme: IconThemeData(color: Colors.black),
+        ),
       ),
-      home: startScreen,
+
+      // Dark Theme
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+        ),
+      ),
+
+      home: const DashboardScreen(),
     );
   }
 }

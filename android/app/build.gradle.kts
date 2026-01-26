@@ -10,7 +10,7 @@ android {
     
     // 👇 DEĞİŞİKLİK 1: "flutter.compileSdkVersion" yerine elle "35" yazdık.
     // Bu, "Android 36 gerekir" hatasını çözer.
-    compileSdk = 35
+    compileSdk = 34
     
     ndkVersion = flutter.ndkVersion
 

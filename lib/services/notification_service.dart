@@ -35,7 +35,6 @@ class NotificationService {
 
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
-      // 👇 Bildirime tıklayınca ne olacağını görmek için
       onDidReceiveNotificationResponse: (details) {
         print("🔔 DEBUG: Bildirime tıklandı: ${details.payload}");
       },
@@ -54,32 +53,28 @@ class NotificationService {
     }
   }
 
+  // --- 1. TASK İÇİN PLANLI BİLDİRİM (Mevcut Olan) ---
   Future<void> scheduleTaskNotification(
     int id,
     String taskTitle,
     DateTime dueDate,
   ) async {
     final now = DateTime.now();
-
-    // GERÇEK MANTIK: Teslim tarihinden 1 saat önce
     DateTime scheduledTime = dueDate.subtract(const Duration(hours: 1));
 
     String messageBody =
         "Woof! 🚨 $taskTitle teslimine son 1 saat kaldı! Hadi bitirelim!";
 
-    // Eğer kullanıcı ödevi zaten "son 1 saat kala" eklediyse (Örn: Ödev 30 dk sonra)
-    // Bildirimi kaçırmaması için hemen 1 dakika sonraya kuralım.
     if (scheduledTime.isBefore(now)) {
       scheduledTime = now.add(const Duration(minutes: 1));
       messageBody = "Hav hav! 😱 $taskTitle için 1 saatten AZ kaldı! Acele et!";
     }
 
-    // Geçmiş zamana (örneğin düne) bildirim kurulmaz
     if (scheduledTime.isBefore(now)) return;
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'task_channel_final', // Kanal ID'si sabitlendi
+          'task_channel_final',
           'Task Reminders',
           channelDescription: 'Reminders for upcoming tasks',
           importance: Importance.max,
@@ -104,5 +99,35 @@ class NotificationService {
     );
 
     print("✅ PLANLANDI: $taskTitle için bildirim saati: $scheduledTime");
+  }
+
+  // --- 🔥 2. EKSİK OLAN KISIM: FOCUS İÇİN ANLIK BİLDİRİM ---
+  // (Hata veren yer burasıydı, çünkü bu fonksiyon yoktu)
+  Future<void> showInstantNotification({
+    required String title,
+    required String body,
+  }) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'focus_channel_id', // Kanal ID
+          'Focus Timer', // Kanal Adı
+          channelDescription: 'Notifications for focus sessions',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+        );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+    );
+
+    // Anlık gösterim
+    await flutterLocalNotificationsPlugin.show(
+      888, // Sabit ID
+      title,
+      body,
+      platformDetails,
+    );
   }
 }

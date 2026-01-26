@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/course_model.dart'; // Model dosyanın yolu
-import 'widgets/weekly_calendar.dart'; // Takvim widget'ın
-import 'widgets/course_card.dart'; // Ders kartı widget'ın
-import 'add_course_screen.dart'; // Ders ekleme ekranı
-import 'course_detail_screen.dart'; // Detay ekranı
-import '../focus_mode/focus_screen.dart'; // Focus ekranı
-import '../pet_room/pet_room_screen.dart'; // Pet ekranı
 
-// ---------------------------------------------------------
-// 1. ANA EKRAN (DASHBOARD SCREEN)
-// Verileri yönetir ve Sayfalar Arası Geçişi Sağlar
-// ---------------------------------------------------------
+// --- CORE ---
+import '../../core/constants/app_strings.dart';
+import '../../providers/course_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../models/course_model.dart';
+
+// --- EKRANLAR ---
+import '../focus_mode/focus_screen.dart';
+import '../pet_room/pet_room_screen.dart';
+import 'add_course_screen.dart';
+import 'course_detail_screen.dart';
+
+// --- WIDGETS ---
+import 'widgets/weekly_calendar.dart';
+import 'widgets/course_card.dart';
+import 'widgets/streak_badge.dart';
+import 'widgets/settings_icon.dart';
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -23,121 +29,79 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
-  List<CourseModel> _allCourses = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCourses();
-  }
 
   void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
-  Future<void> _loadCourses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? coursesJson = prefs.getString('saved_courses');
-
-    if (coursesJson != null) {
-      final List<dynamic> decodedList = jsonDecode(coursesJson);
-      setState(() {
-        _allCourses = decodedList.map((e) => CourseModel.fromJson(e)).toList();
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _persistCourses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String encodedList = jsonEncode(
-      _allCourses.map((e) => e.toJson()).toList(),
-    );
-    await prefs.setString('saved_courses', encodedList);
-  }
-
-  void _saveCourse(CourseModel course) {
-    setState(() {
-      final index = _allCourses.indexWhere((c) => c.id == course.id);
-      if (index != -1) {
-        _allCourses[index] = course;
-      } else {
-        _allCourses.add(course);
-      }
-    });
-    _persistCourses();
-  }
-
-  void _deleteCourse(String courseId) {
-    setState(() {
-      _allCourses.removeWhere((c) => c.id == courseId);
-    });
-    _persistCourses();
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-        ),
-      );
+    final courseProvider = context.watch<CourseProvider>();
+    final settings = context.watch<SettingsProvider>();
+
+    if (courseProvider.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // 👇 BURASI DÜZELDİ: Artık kendi içinde DashboardScreen çağırmıyor.
-    // Direkt MyWeekTab'ı çağırıyor.
     final List<Widget> pages = [
       MyWeekTab(
-        courses: _allCourses,
+        courses: courseProvider.courses,
         onAddClassTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddCourseScreen(onSave: _saveCourse),
+              builder: (context) => AddCourseScreen(
+                onSave: (course) =>
+                    context.read<CourseProvider>().saveCourse(course),
+              ),
             ),
           );
         },
-        onCourseUpdated: _saveCourse,
-        onDeleteCourse: _deleteCourse,
+        onCourseUpdated: (course) =>
+            context.read<CourseProvider>().saveCourse(course),
+        onDeleteCourse: (id) => context.read<CourseProvider>().deleteCourse(id),
       ),
-      const FocusScreen(), // 2. Sayfa: Focus
-      const PetRoomScreen(), // 3. Sayfa: Pet
+      const FocusScreen(),
+      const PetRoomScreen(),
     ];
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      // ✅ APPBAR: Focus ekranıyla tam hizalı
       appBar: _selectedIndex == 0
           ? AppBar(
-              title: const Text(
-                "Hello, Student 👋",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: Colors.white,
               elevation: 0,
-              foregroundColor: Colors.black,
+              backgroundColor: Colors.transparent,
+              titleSpacing: 16,
+              title: Text(
+                "Hi, ${settings.username}! 👋",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              actions: const [
+                StreakBadge(),
+                SizedBox(width: 4),
+                SettingsIcon(),
+                SizedBox(width: 12),
+              ],
             )
           : null,
       body: pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-        indicatorColor: const Color(0xFF6C63FF).withOpacity(0.2),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.calendar_today_outlined),
-            label: 'My Week',
+            label: AppStrings.navMyWeek,
           ),
           NavigationDestination(
             icon: Icon(Icons.timer_outlined),
-            label: 'Focus',
+            label: AppStrings.navFocus,
           ),
           NavigationDestination(
             icon: Icon(Icons.pets_outlined),
-            label: 'My Pet',
+            label: AppStrings.navPet,
           ),
         ],
       ),
@@ -146,8 +110,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // ---------------------------------------------------------
-// 2. HAFTALIK GÖRÜNÜM (MY WEEK TAB)
-// Dersleri ve Ödevleri Listeler
+// MY WEEK TAB
 // ---------------------------------------------------------
 class MyWeekTab extends StatefulWidget {
   final List<CourseModel> courses;
@@ -183,7 +146,6 @@ class _MyWeekTabState extends State<MyWeekTab> {
     String code = "";
     String number = "";
     String trimmed = name.trim();
-
     if (trimmed.contains(' ')) {
       final parts = trimmed.split(' ');
       code = parts[0];
@@ -203,15 +165,12 @@ class _MyWeekTabState extends State<MyWeekTab> {
         code = trimmed;
       }
     }
-    if (code.length > 4) {
-      code = code.substring(0, 4).toUpperCase();
-    }
+    if (code.length > 4) code = code.substring(0, 4).toUpperCase();
     return {'code': code.toUpperCase(), 'number': number};
   }
 
   @override
   Widget build(BuildContext context) {
-    // Bugünkü dersleri filtrele
     final List<Map<String, dynamic>> todaysSessions = [];
     for (var course in widget.courses) {
       for (var schedule in course.schedules) {
@@ -226,7 +185,6 @@ class _MyWeekTabState extends State<MyWeekTab> {
       ),
     );
 
-    // Gelecek ödevleri filtrele
     final List<Map<String, dynamic>> upcomingTasks = [];
     final now = DateTime.now();
     final oneWeekLater = now.add(const Duration(days: 7));
@@ -238,9 +196,7 @@ class _MyWeekTabState extends State<MyWeekTab> {
             now.subtract(const Duration(days: 1)),
           );
           bool isWithinWeek = task.dueDate!.isBefore(oneWeekLater);
-
           if (isFuture && isWithinWeek) {
-            // 👇 ÖNEMLİ: Course'un kendisini alıyoruz ki tıklayınca gidelim
             upcomingTasks.add({'task': task, 'course': course});
           }
         }
@@ -257,7 +213,6 @@ class _MyWeekTabState extends State<MyWeekTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Takvim
           WeeklyCalendar(
             selectedDay: _selectedDayOfWeek,
             onAddPressed: widget.onAddClassTap,
@@ -265,15 +220,12 @@ class _MyWeekTabState extends State<MyWeekTab> {
                 setState(() => _selectedDayOfWeek = day),
           ),
           const SizedBox(height: 24),
-
-          // Günün Programı Başlığı
           Text(
-            "${_dayNamesFull[_selectedDayOfWeek - 1]}'s Schedule",
+            "${_dayNamesFull[_selectedDayOfWeek - 1]}${AppStrings.scheduleTitleSuffix}",
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
-          // Günün Dersleri
           if (todaysSessions.isEmpty)
             Center(
               child: Padding(
@@ -282,9 +234,9 @@ class _MyWeekTabState extends State<MyWeekTab> {
                   children: [
                     Icon(Icons.event_busy, size: 40, color: Colors.grey[300]),
                     const SizedBox(height: 10),
-                    Text(
-                      "No classes today!",
-                      style: const TextStyle(color: Colors.grey),
+                    const Text(
+                      AppStrings.noClassesToday,
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ],
                 ),
@@ -302,50 +254,35 @@ class _MyWeekTabState extends State<MyWeekTab> {
 
           const SizedBox(height: 30),
 
-          // --- YAKLAŞAN GÖREVLER (Burada Tıklama Özelliği Var) ---
           if (upcomingTasks.isNotEmpty) ...[
             const Text(
-              "Upcoming Deadlines (Next 7 Days) 🚨",
+              AppStrings.upcomingDeadlines,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             ...upcomingTasks.map((item) {
               final task = item['task'] as TaskModel;
               final course = item['course'] as CourseModel;
-
               final daysLeft = task.dueDate!.difference(DateTime.now()).inDays;
-              final hoursLeft = task.dueDate!
-                  .difference(DateTime.now())
-                  .inHours;
-
+              String timeText = daysLeft == 0
+                  ? AppStrings.today
+                  : (daysLeft == 1
+                        ? AppStrings.tomorrow
+                        : DateFormat("MMM d").format(task.dueDate!));
               bool isUrgent =
-                  hoursLeft < 72 &&
-                  task.dueDate!.isAfter(
-                    DateTime.now().subtract(const Duration(hours: 1)),
-                  );
+                  task.dueDate!.difference(DateTime.now()).inHours < 72;
 
-              String timeText = "";
-              if (daysLeft == 0)
-                timeText = "TODAY";
-              else if (daysLeft == 1)
-                timeText = "TOMORROW";
-              else
-                timeText = DateFormat("MMM d").format(task.dueDate!);
-
-              // 👇 TIKLANABİLİR ALAN (GestureDetector)
               return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CourseDetailScreen(
-                        course: course,
-                        onCourseUpdated: widget.onCourseUpdated,
-                        onDeleteCourse: widget.onDeleteCourse,
-                      ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CourseDetailScreen(
+                      course: course,
+                      onCourseUpdated: widget.onCourseUpdated,
+                      onDeleteCourse: widget.onDeleteCourse,
                     ),
-                  );
-                },
+                  ),
+                ),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(12),
@@ -361,13 +298,10 @@ class _MyWeekTabState extends State<MyWeekTab> {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: isUrgent
-                              ? Colors.red.withOpacity(0.2)
+                              ? Colors.red.withValues(alpha: 0.1)
                               : Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -378,17 +312,14 @@ class _MyWeekTabState extends State<MyWeekTab> {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: isUrgent ? Colors.red[900] : Colors.grey,
+                                color: isUrgent ? Colors.red : Colors.grey,
                               ),
                             ),
                             Text(
                               DateFormat("HH:mm").format(task.dueDate!),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: isUrgent
-                                    ? Colors.red[900]
-                                    : Colors.black87,
                               ),
                             ),
                           ],
@@ -401,31 +332,24 @@ class _MyWeekTabState extends State<MyWeekTab> {
                           children: [
                             Text(
                               task.title,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: isUrgent
-                                    ? Colors.red[900]
-                                    : Colors.black87,
                               ),
                             ),
                             Text(
                               course.name,
                               style: TextStyle(
-                                color: isUrgent
-                                    ? Colors.red[300]
-                                    : course.color,
+                                color: course.color,
                                 fontSize: 12,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         Icons.arrow_forward_ios,
                         size: 14,
-                        color: isUrgent ? Colors.red[200] : Colors.grey[300],
+                        color: Colors.grey,
                       ),
                     ],
                   ),
@@ -435,11 +359,9 @@ class _MyWeekTabState extends State<MyWeekTab> {
           ],
 
           const SizedBox(height: 30),
-
-          // --- TÜM DERSLER (Tıklanabilir) ---
           if (widget.courses.isNotEmpty) ...[
             const Text(
-              "All Courses",
+              AppStrings.allCourses,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -451,69 +373,41 @@ class _MyWeekTabState extends State<MyWeekTab> {
                 itemBuilder: (context, index) {
                   final course = widget.courses[index];
                   final parts = _smartSplit(course.name);
-                  final String displayCode = parts['code']!;
-                  final String displayNumber = parts['number']!;
-
                   return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CourseDetailScreen(
-                            course: course,
-                            onCourseUpdated: widget.onCourseUpdated,
-                            onDeleteCourse: widget.onDeleteCourse,
-                          ),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CourseDetailScreen(
+                          course: course,
+                          onCourseUpdated: widget.onCourseUpdated,
+                          onDeleteCourse: widget.onDeleteCourse,
                         ),
-                      );
-                    },
+                      ),
+                    ),
                     child: Container(
                       width: 90,
                       margin: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
                         color: course.color,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: course.color.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4.0,
-                            ),
-                            child: Text(
-                              displayCode,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.1,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          Text(
+                            parts['code']!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (displayNumber.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2.0),
-                              child: Text(
-                                displayNumber,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.95),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          Text(
+                            parts['number']!,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
                             ),
+                          ),
                         ],
                       ),
                     ),
