@@ -15,6 +15,9 @@ class WeeklyCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<String> weekDays = ["M", "T", "W", "T", "F", "S", "S"];
+    // Monday of the current week, used to show the real day numbers.
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -110,7 +113,7 @@ class WeeklyCalendar extends StatelessWidget {
                               size: 20,
                             )
                           : Text(
-                              "${12 + index}",
+                              "${monday.add(Duration(days: index)).day}",
                               style: const TextStyle(color: Colors.black87),
                             ),
                     ),
