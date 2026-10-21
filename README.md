@@ -7,7 +7,15 @@ A gamified study companion for students, built with Flutter. Plan your week of c
 ![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-555)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-<!-- SCREENSHOTS -->
+<p align="center">
+  <img src="docs/screenshots/my-week.jpg" width="200" alt="My Week: daily schedule">
+  <img src="docs/screenshots/course-detail.jpg" width="200" alt="Course detail with tasks">
+  <img src="docs/screenshots/focus-running.jpg" width="200" alt="Focus session in progress">
+  <img src="docs/screenshots/my-pet.jpg" width="200" alt="My Pet room">
+</p>
+<p align="center">
+  <sub>My Week · Course details · Focus session · My Pet</sub>
+</p>
 
 ## Features
 
@@ -16,6 +24,10 @@ A gamified study companion for students, built with Flutter. Plan your week of c
 - A weekly calendar shows the selected day's schedule at a glance.
 - Each course has its own task list with due dates. Tasks can be added, edited, completed and deleted.
 - An **Upcoming Deadlines** section highlights tasks due in the next 7 days.
+
+<p align="center">
+  <img src="docs/screenshots/deadlines.jpg" width="220" alt="Upcoming deadlines and course list">
+</p>
 
 ### 🎯 Focus mode
 - Pomodoro-style timer with an adjustable session length and a circular progress indicator.
