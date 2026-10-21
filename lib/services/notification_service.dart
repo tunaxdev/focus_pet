@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -12,6 +13,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
+    // Local notifications are not supported on the web.
+    if (kIsWeb) return;
     tz.initializeTimeZones();
 
     // 👇 DEBUG: Saat dilimini yazdıralım
@@ -59,6 +62,8 @@ class NotificationService {
     String taskTitle,
     DateTime dueDate,
   ) async {
+    // Local notifications are not supported on the web.
+    if (kIsWeb) return;
     final now = DateTime.now();
     DateTime scheduledTime = dueDate.subtract(const Duration(hours: 1));
 
@@ -107,6 +112,8 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
+    // Local notifications are not supported on the web.
+    if (kIsWeb) return;
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
           'focus_channel_id', // Kanal ID
