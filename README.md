@@ -31,7 +31,7 @@ A gamified study companion for students, built with Flutter. Plan your week of c
 
 ### 🎯 Focus mode
 - Pomodoro-style timer with an adjustable session length and a circular progress indicator.
-- Ambient soundscapes (rain, fireplace, café, white noise) that loop during a session.
+- Ambient soundscapes (rain, fireplace, café, white noise) that loop during a session ([sound files not included](#ambient-sounds)).
 - Keeps the screen awake while focusing, with optional haptic feedback.
 - **Anti-distraction check:** if you leave the app for more than 10 seconds during a session, the timer pauses.
 - Daily focus goal (30–120 min), daily quests and a reward summary when a session ends.
@@ -76,7 +76,7 @@ lib/
 ├── services/               # Local notifications
 └── main.dart               # App entry point and providers
 assets/
-└── sounds/                 # Ambient sound loops
+└── sounds/                 # Ambient sound loops (add your own, see below)
 ```
 
 The app follows a feature-first structure. Each screen reads and updates state through providers, and the providers persist their data with `shared_preferences`.
@@ -93,6 +93,19 @@ flutter run
 ```
 
 To run in a browser, use `flutter run -d chrome`. Local notifications are only available on mobile and desktop.
+
+### Ambient sounds
+
+Sound files are not included in this repository for licensing reasons. To enable ambient sounds, add your own MP3 loops to `assets/sounds/` with these names:
+
+```
+assets/sounds/gentle-rain.mp3
+assets/sounds/fire-sound.mp3
+assets/sounds/cafe-noise.mp3
+assets/sounds/white-noise.mp3
+```
+
+Free, royalty-free loops are available on [Pixabay](https://pixabay.com/sound-effects/) and [Freesound](https://freesound.org) (look for CC0). Without these files the app works normally, and selecting a sound simply shows a short message.
 
 ## Roadmap
 

@@ -73,7 +73,16 @@ class _FocusScreenState extends State<FocusScreen> with WidgetsBindingObserver {
   Future<void> _toggleSound(String soundFile) async {
     if (_currentSound != soundFile) {
       await _audioPlayer.setVolume(1.0);
-      await _audioPlayer.play(AssetSource('sounds/$soundFile'));
+      try {
+        await _audioPlayer.play(AssetSource('sounds/$soundFile'));
+      } catch (_) {
+        // Sound files are not bundled in the repository (see README).
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Sound file not found: assets/sounds/$soundFile")),
+        );
+        return;
+      }
       setState(() {
         _currentSound = soundFile;
         _isAmbiencePaused = false;

@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Ambient sounds are not distributed with the repo (licensing); add your own locally
+assets/sounds/*.mp3
